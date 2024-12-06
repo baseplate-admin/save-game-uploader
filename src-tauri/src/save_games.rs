@@ -1,6 +1,6 @@
 use dirs_next;
 use glob::glob;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::from_reader;
 use std::{
     fs::File,
@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct LocationData {
     name: String,
     parent: String,
@@ -16,7 +16,8 @@ pub struct LocationData {
     globs: Vec<String>,
 }
 
-pub fn find_games() -> Result<Vec<LocationData>, String> {
+#[tauri::command]
+pub fn find_games() -> Vec<LocationData> {
     let cargo_dir = env!("CARGO_MANIFEST_DIR");
     let json_path = Path::new(cargo_dir).join("data").join("location.json");
 
@@ -65,5 +66,5 @@ pub fn find_games() -> Result<Vec<LocationData>, String> {
         found_games.push(item);
     }
 
-    Ok(found_games)
+    found_games
 }
