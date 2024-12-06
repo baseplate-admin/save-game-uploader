@@ -7,7 +7,7 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
 };
-use tauri::{Emitter, Window};
+use tauri::{AppHandle, Emitter};
 
 #[derive(Clone, Serialize)]
 struct EventPayload {
@@ -25,7 +25,7 @@ pub struct LocationData {
     image: String,
 }
 #[tauri::command]
-pub fn find_games(window: Window) -> Vec<LocationData> {
+pub fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     let cargo_dir = env!("CARGO_MANIFEST_DIR");
     let json_path = Path::new(cargo_dir).join("data").join("location.json");
 
@@ -67,7 +67,7 @@ pub fn find_games(window: Window) -> Vec<LocationData> {
             }
         }
 
-        window
+        app_handle
             .emit(
                 "main-loop-progress",
                 EventPayload {
@@ -76,7 +76,7 @@ pub fn find_games(window: Window) -> Vec<LocationData> {
                     current: index,
                 },
             )
-            .expect("Cannot send `main-loop-progress` event");
+            .unwrap();
         found_games.push(item); // Cloning the item to get an owned value
     }
 
