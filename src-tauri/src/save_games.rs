@@ -68,12 +68,13 @@ pub fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
         }
 
         app_handle
-            .emit(
+            .emit_to(
+                "updater",
                 "main-loop-progress",
                 EventPayload {
                     name: item.name.clone(),
                     total: json_length,
-                    current: index,
+                    current: index + 1,
                 },
             )
             .unwrap();
