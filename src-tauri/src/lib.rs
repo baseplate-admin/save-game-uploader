@@ -56,7 +56,7 @@ pub fn find_games() {
             continue 'main;
         };
 
-        for glob_pattern in item.globs {
+        for glob_pattern in item.globs.clone() {
             let pattern_path = child_directory.join(glob_pattern.clone());
             let pattern_str = pattern_path.to_str().expect(&format!(
                 "Pattern not right. Found {}. Made {}",
@@ -69,16 +69,18 @@ pub fn find_games() {
 
             for entry in files {
                 match entry {
-                    Ok(path) => {
-                        println!("Found file: {}", path.display());
-                    }
                     Err(_) => {
                         println!("Glob File not found for {}", item.name);
                         continue 'main;
                     }
+                    _ => {} // Found entry. Don't do anything
                 }
             }
         }
         found_games.push(item);
+    }
+
+    for item in found_games {
+        println!("{}", item.name);
     }
 }

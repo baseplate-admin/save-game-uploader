@@ -4,5 +4,11 @@
         "parent": "Document",
         "directory": "Assassin's Creed Mirage",
         "globs": ["ACMirage.ini", "saves/*.sav"]
+    },
+    {
+        "name": "Shadow of the Tomb Raider (cracked)",
+        "parent": "Document",
+        "directory": "Shadow of the Tomb Raider",
+        "globs": ["**/*.dat"]
     }
 ]
