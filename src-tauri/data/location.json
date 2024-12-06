@@ -1,0 +1,8 @@
+[
+    {
+        "name": "Assassin's Creed Mirage (cracked)",
+        "parent": "Document",
+        "directory": "Assassin's Creed Mirage",
+        "globs": ["ACMirage.ini", "saves/*.sav"]
+    }
+]
