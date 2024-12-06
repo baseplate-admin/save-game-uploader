@@ -40,7 +40,7 @@ pub fn find_games() {
 
     let json: Vec<LocationData> = from_reader(json_reader).expect("JSON was not well-formatted");
 
-    let mut found_games: Vec<&LocationData> = Vec::new();
+    let mut found_games: Vec<LocationData> = Vec::new();
 
     'main: for item in json {
         let parent_directory: PathBuf;
@@ -51,7 +51,7 @@ pub fn find_games() {
             }
         }
 
-        let child_directory = parent_directory.join(item.directory);
+        let child_directory = parent_directory.join(item.directory.clone());
         if !child_directory.exists() {
             continue 'main;
         };
@@ -79,6 +79,6 @@ pub fn find_games() {
                 }
             }
         }
-        found_games.push(&item);
+        found_games.push(item);
     }
 }
