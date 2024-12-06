@@ -7,6 +7,14 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
 };
+use tauri::{Emitter, Window};
+
+#[derive(Clone, Serialize)]
+struct EventPayload {
+    name: String,
+    total: usize,
+    current: usize,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LocationData {
@@ -14,10 +22,10 @@ pub struct LocationData {
     parent: String,
     directory: String,
     globs: Vec<String>,
+    image: String,
 }
-
 #[tauri::command]
-pub fn find_games() -> Vec<LocationData> {
+pub fn find_games(window: Window) -> Vec<LocationData> {
     let cargo_dir = env!("CARGO_MANIFEST_DIR");
     let json_path = Path::new(cargo_dir).join("data").join("location.json");
 
@@ -25,17 +33,15 @@ pub fn find_games() -> Vec<LocationData> {
     let json_reader = BufReader::new(json_file);
 
     let json: Vec<LocationData> = from_reader(json_reader).expect("JSON was not well-formatted");
+    let json_length = json.len();
 
     let mut found_games: Vec<LocationData> = Vec::new();
 
-    'main: for item in json {
-        let parent_directory: PathBuf;
-        match item.parent.as_str() {
-            "Document" => parent_directory = dirs_next::document_dir().unwrap(),
-            _ => {
-                panic!("Parent Directory is invalid");
-            }
-        }
+    'main: for (index, item) in json.into_iter().enumerate() {
+        let parent_directory: PathBuf = match item.parent.as_str() {
+            "Document" => dirs_next::document_dir().unwrap(),
+            _ => panic!("Parent Directory is invalid"),
+        };
 
         let child_directory = parent_directory.join(item.directory.clone());
         if !child_directory.exists() {
@@ -54,16 +60,24 @@ pub fn find_games() -> Vec<LocationData> {
                 .unwrap();
 
             for entry in files {
-                match entry {
-                    Err(_) => {
-                        println!("Glob File not found for {}", item.name);
-                        continue 'main;
-                    }
-                    _ => {} // Found entry. Don't do anything
+                if let Err(_) = entry {
+                    println!("Glob File not found for {}", item.name);
+                    continue 'main;
                 }
             }
         }
-        found_games.push(item);
+
+        window
+            .emit(
+                "main-loop-progress",
+                EventPayload {
+                    name: item.name.clone(),
+                    total: json_length,
+                    current: index,
+                },
+            )
+            .expect("Cannot send `main-loop-progress` event");
+        found_games.push(item); // Cloning the item to get an owned value
     }
 
     found_games

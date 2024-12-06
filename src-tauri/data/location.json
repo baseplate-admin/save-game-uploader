@@ -3,12 +3,14 @@
         "name": "Assassin's Creed Mirage (cracked)",
         "parent": "Document",
         "directory": "Assassin's Creed Mirage",
-        "globs": ["ACMirage.ini", "saves/*.sav"]
+        "globs": ["ACMirage.ini", "saves/*.sav"],
+        "image": "3035570.jpg"
     },
     {
         "name": "Shadow of the Tomb Raider (cracked)",
         "parent": "Document",
         "directory": "Shadow of the Tomb Raider",
-        "globs": ["**/*.dat"]
+        "globs": ["**/*.dat"],
+        "image": "23411.png"
     }
 ]
