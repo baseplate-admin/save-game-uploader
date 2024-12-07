@@ -6,6 +6,8 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
+    thread,
+    time::Duration,
 };
 use tauri::{AppHandle, Emitter};
 
@@ -78,6 +80,7 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
                 },
             )
             .unwrap();
+        thread::sleep(Duration::from_millis(4000));
         found_games.push(item); // Cloning the item to get an owned value
     }
 
