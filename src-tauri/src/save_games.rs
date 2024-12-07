@@ -1,10 +1,10 @@
 use dirs_next;
 use glob::glob;
+use json5;
 use serde::{Deserialize, Serialize};
-use serde_json::from_reader;
 use std::{
     fs::File,
-    io::BufReader,
+    io::{BufReader, Read},
     path::{Path, PathBuf},
     // thread,
     // time::Duration,
@@ -29,13 +29,17 @@ pub struct LocationData {
 #[tauri::command]
 pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     let cargo_dir = env!("CARGO_MANIFEST_DIR");
-    let json_path = Path::new(cargo_dir).join("data").join("location.json");
+    let json_path = Path::new(cargo_dir).join("data").join("location.json5");
 
-    let json_file = File::open(json_path).expect("`location.json` not found");
-    let json_reader = BufReader::new(json_file);
+    let json_file = File::open(json_path).expect("`location.json5` not found");
+    let mut json_buffer = BufReader::new(json_file);
+    let mut json_string = String::new();
+    json_buffer
+        .read_to_string(&mut json_string)
+        .expect("Cannot read `json5` file to string");
 
-    let json: Vec<LocationData> =
-        from_reader(json_reader).expect("JSON was not well-formatted according to `LocationData`");
+    let json: Vec<LocationData> = json5::from_str(&json_string)
+        .expect("JSON was not well-formatted according to `LocationData`");
     let json_length = json.len();
 
     let mut found_games: Vec<LocationData> = Vec::new();
@@ -54,7 +58,7 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
         };
 
         let child_directory = parent_directory.join(item.directory.clone());
-        
+
         println!(
             "{} {} {}",
             item.name,
