@@ -5,8 +5,31 @@ import { sveltekit } from '@sveltejs/kit/vite';
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
     plugins: [sveltekit()],
+    esbuild: {
+        target: 'esnext',
+        legalComments: 'external',
+    },
+    css: {
+        devSourcemap: true,
+        // Switch to lightning.css when tailwind supports it
+        transformer: 'postcss',
+    },
+    build: {
+        commonjsOptions: {
+            transformMixedEsModules: true,
+        },
+        chunkSizeWarningLimit: 2048,
+        emptyOutDir: true,
+        target: 'esnext',
+        cssTarget: 'esnext',
+        minify: 'terser',
+        //sourcemap: true
+    },
+    worker: {
+        format: 'es',
+    },
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //
@@ -29,4 +52,4 @@ export default defineConfig(async () => ({
             ignored: ['**/src-tauri/**'],
         },
     },
-}));
+});
