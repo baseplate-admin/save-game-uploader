@@ -25,7 +25,7 @@ pub struct LocationData {
     image: String,
 }
 #[tauri::command]
-pub fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
+pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     let cargo_dir = env!("CARGO_MANIFEST_DIR");
     let json_path = Path::new(cargo_dir).join("data").join("location.json");
 
