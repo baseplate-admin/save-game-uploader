@@ -5,6 +5,18 @@ description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
+[profile.release.package."*"]
+codegen-units = 1
+opt-level = 's'
+strip = true
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = "fat"
+opt-level = 's'
+strip = true
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]

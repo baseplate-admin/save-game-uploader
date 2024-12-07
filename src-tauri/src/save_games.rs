@@ -1,3 +1,4 @@
+use crate::debug_println;
 use dirs_next;
 use glob::glob;
 use json5;
@@ -59,7 +60,7 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
 
         let child_directory = parent_directory.join(item.directory.clone());
 
-        println!(
+        debug_println!(
             "{} {} {}",
             item.name,
             child_directory.display(),

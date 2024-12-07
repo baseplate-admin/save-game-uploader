@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+pub mod macros;
 mod save_games;
 use crate::save_games::find_games;
 
