@@ -1,4 +1,5 @@
 [
+    // Cracked games
     {
         name: "Assassin's Creed Mirage (cracked)",
         parent: 'Document',
@@ -57,5 +58,14 @@
         directory: 'Shadow of the Tomb Raider',
         globs: ['**/*.dat'],
         image: '23411.png',
+    },
+
+    // Uncracked Games
+    {
+        name: "Assassin's Creed IV Black Flag",
+        parent: 'Program Files (x86)',
+        directory: 'Ubisoft',
+        globs: ['Ubisoft Game Launcher/savegames/**/273/**/*.save'],
+        image: '',
     },
 ]

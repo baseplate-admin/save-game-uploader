@@ -54,7 +54,7 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
             "Local" => dirs_next::data_local_dir().unwrap(), // "AppData/Local"
             "Roaming" => dirs_next::data_dir().unwrap(),     // "AppData/Roaming"
             "ProgramData" => Path::new("C:\\ProgramData").to_path_buf(),
-
+            "Program Files (x86)" => Path::new("C:\\Program Files (x86)").to_path_buf(),
             _ => panic!("Parent Directory is invalid"),
         };
 
