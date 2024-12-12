@@ -1,15 +1,26 @@
 use glob::glob;
 use rayon::prelude::*;
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 pub fn given_glob_check_if_file_exists(
     globs: Vec<String>,
     parent_dir: PathBuf,
     name: Option<String>,
 ) -> Result<bool, String> {
-    let mut found = false;
+    let found = Arc::new(AtomicBool::new(false));
 
     globs.par_iter().for_each(|glob_pattern| {
+        // Early exit if found is true
+        if found.load(Ordering::SeqCst) {
+            return;
+        }
+
         let pattern_path = parent_dir.join(glob_pattern.clone());
         let pattern_str = pattern_path.to_str().expect(&format!(
             "Pattern not right. Found {}. Made {}",
@@ -26,10 +37,9 @@ pub fn given_glob_check_if_file_exists(
                     println!("Glob File not found for {}", _name);
                 }
             } else {
-                found = true;
+                found.store(true, Ordering::SeqCst);
             }
         }
     });
-
-    Ok(found)
+    Ok(found.load(Ordering::SeqCst))
 }
