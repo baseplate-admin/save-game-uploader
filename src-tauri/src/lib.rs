@@ -1,10 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod commands;
 mod macros;
-mod save_games;
-mod search;
 mod utils;
 
-use save_games::find_games;
+use commands::find_games::find_games;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

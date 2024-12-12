@@ -1,3 +1,6 @@
+use crate::{debug_println, utils};
+use memoize::memoize;
+use rayon::prelude::*;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -6,12 +9,13 @@ use std::{
         Arc, Mutex,
     },
 };
+use utils::globs::given_glob_check_if_file_exists;
 use windows::{Win32::Foundation::MAX_PATH, Win32::Storage::FileSystem::GetLogicalDriveStringsW};
 
-use crate::{debug_println, utils};
-use memoize::memoize;
-use rayon::prelude::*;
-use utils::globs::given_glob_check_if_file_exists;
+const AVOID_DIRS: [&str; 2] = [
+    "Windows", // C:/Windows
+    "AppData",
+];
 
 fn build_folder_map(dir: &Path, shared_vector: Arc<Mutex<Vec<PathBuf>>>) {
     if let Ok(entries) = fs::read_dir(dir) {
@@ -23,7 +27,9 @@ fn build_folder_map(dir: &Path, shared_vector: Arc<Mutex<Vec<PathBuf>>>) {
         entries
             .par_iter() // Use rayon's parallel iterator
             .for_each(|path| {
-                if path.is_dir() {
+                if path.is_dir()
+                    && !AVOID_DIRS.contains(&path.file_name().unwrap().to_str().unwrap())
+                {
                     debug_println!("Scanned: {}", path.display());
                     {
                         let mut vec = shared_vector.lock().unwrap();
@@ -71,7 +77,6 @@ fn build_directory_map() -> Result<Vec<PathBuf>, String> {
         .into_inner()
         .map_err(|_| "Failed to unlock Mutex".to_string())?;
 
-    println!("{:?}", result);
     Ok(result)
 }
 
@@ -95,5 +100,5 @@ pub fn check_if_directory_is_in_disk(
         }
     });
 
-    Ok(true)
+    Ok(found.load(Ordering::SeqCst))
 }

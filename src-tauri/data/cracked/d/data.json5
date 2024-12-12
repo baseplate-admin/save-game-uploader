@@ -1,0 +1,15 @@
+[
+    {
+        name: 'Dying Light 2',
+        parent: 'GAMEDIR',
+        globs: [
+            'Dying Light 2/SteamData/user_stats.ini',
+            // out/save/save_main_0.sav
+            'Dying Light 2/SteamData/**/*.sav',
+            'Dying Light 2/SteamData/**/*.sbk',
+            // out/profiles/default.pro
+            'Dying Light 2/SteamData/**/*.pro',
+        ],
+        image: '',
+    },
+]

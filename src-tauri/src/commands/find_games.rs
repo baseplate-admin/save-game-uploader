@@ -1,18 +1,23 @@
-use crate::{debug_println, search::check_if_directory_is_in_disk, utils};
+use crate::{debug_println, utils};
 use glob::glob;
 
 use dirs_next;
 use json5;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::{BufReader, Read},
     path::{Path, PathBuf},
-    // thread,
-    // time::Duration,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    }, // thread,
+       // time::Duration,
 };
 use tauri::{AppHandle, Emitter};
 use utils::globs::given_glob_check_if_file_exists;
+use utils::search::check_if_directory_is_in_disk;
 
 #[derive(Clone, Serialize)]
 struct EventPayload {
@@ -40,6 +45,13 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     for entry in files {
         match entry {
             Ok(path) => {
+                if path.file_name().unwrap().to_str().unwrap() != "data.json5" {
+                    panic!(
+                        "There should only be `data.json5` but found {}",
+                        path.file_name().unwrap().to_str().unwrap()
+                    );
+                };
+
                 let json_file =
                     File::open(path.clone()).expect(&format!("Canonot load {}.", path.display()));
 
@@ -67,25 +79,16 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
         )
     }
 
-    let mut found_games: Vec<LocationData> = Vec::new();
+    // States
+    let found_games: Arc<Mutex<Vec<LocationData>>> = Arc::new(Mutex::new(Vec::new()));
+    let current_counter = Arc::new(AtomicU64::new(0));
 
-    for (index, item) in json.into_iter().enumerate() {
-        if item.parent == "<GAMEDIR>" {
-            if check_if_directory_is_in_disk(item.globs.clone(), Option::Some(item.name.clone()))
+    json.into_par_iter().for_each(|item| {
+        if item.parent == "GAMEDIR" {
+            if !check_if_directory_is_in_disk(item.globs.clone(), Option::Some(item.name.clone()))
                 .unwrap()
             {
-                app_handle
-                    .emit_to(
-                        "updater",
-                        "main-loop-progress",
-                        EventPayload {
-                            name: item.name.clone(),
-                            total: json_length as u64,
-                            current: (index + 1) as u64,
-                        },
-                    )
-                    .unwrap();
-                found_games.push(item);
+                return;
             }
         } else {
             let parent_directory: PathBuf = match item.parent.as_str() {
@@ -97,7 +100,6 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
                 "Roaming" => dirs_next::data_dir().unwrap(),     // "AppData/Roaming"
                 "ProgramData" => Path::new("C:\\ProgramData").to_path_buf(),
                 "Program Files (x86)" => Path::new("C:\\Program Files (x86)").to_path_buf(),
-
                 _ => panic!("Parent Directory is invalid"),
             };
 
@@ -108,31 +110,36 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
                 parent_directory.exists()
             );
 
-            let directory_is_found = given_glob_check_if_file_exists(
+            if !given_glob_check_if_file_exists(
                 item.globs.clone(),
                 parent_directory,
                 Option::Some(item.name.clone()),
             )
-            .unwrap();
-            if directory_is_found {
-                app_handle
-                    .emit_to(
-                        "updater",
-                        "main-loop-progress",
-                        EventPayload {
-                            name: item.name.clone(),
-                            total: json_length as u64,
-                            current: (index + 1) as u64,
-                        },
-                    )
-                    .unwrap();
-                found_games.push(item);
+            .unwrap()
+            {
+                return;
             }
         }
 
-        // Debug code for testing lode
-        // thread::sleep(Duration::from_millis(4000));
-    }
+        let current = current_counter.load(Ordering::SeqCst);
+        current_counter.store(current + 1, Ordering::SeqCst);
 
-    found_games
+        app_handle
+            .emit_to(
+                "updater",
+                "main-loop-progress",
+                EventPayload {
+                    name: item.name.clone(),
+                    total: json_length as u64,
+                    current: (current + 1) as u64,
+                },
+            )
+            .unwrap();
+        found_games.lock().unwrap().push(item);
+    });
+
+    Arc::try_unwrap(found_games)
+        .expect("Multiple references to `found_games` exist")
+        .into_inner()
+        .unwrap()
 }
