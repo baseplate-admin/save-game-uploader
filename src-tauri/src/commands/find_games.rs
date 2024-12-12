@@ -19,19 +19,19 @@ use tauri::{AppHandle, Emitter};
 use utils::globs::given_glob_check_if_file_exists;
 use utils::search::check_if_directory_is_in_disk;
 
-#[derive(Clone, Serialize)]
-struct EventPayload {
-    name: String,
-    total: u64,
-    current: u64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LocationData {
     name: String,
     parent: String,
     globs: Vec<String>,
     image: String,
+}
+
+#[derive(Clone, Serialize)]
+struct ThreadEventPayload {
+    name: String,
+    total: u64,
+    current: u64,
 }
 
 #[tauri::command]
@@ -84,51 +84,55 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     let current_counter = Arc::new(AtomicU64::new(0));
 
     json.into_par_iter().for_each(|item| {
-        if item.parent == "GAMEDIR" {
-            if !check_if_directory_is_in_disk(item.globs.clone(), Option::Some(item.name.clone()))
+        'inner: {
+            if item.parent == "GAMEDIR" {
+                if !check_if_directory_is_in_disk(
+                    item.globs.clone(),
+                    Option::Some(item.name.clone()),
+                )
                 .unwrap()
-            {
-                return;
-            }
-        } else {
-            let parent_directory: PathBuf = match item.parent.as_str() {
-                // Public Directory
-                "Public_Document" => dirs_next::public_dir().unwrap().join("Documents"),
-                // User directories
-                "Document" => dirs_next::document_dir().unwrap(),
-                "Local" => dirs_next::data_local_dir().unwrap(), // "AppData/Local"
-                "Roaming" => dirs_next::data_dir().unwrap(),     // "AppData/Roaming"
-                "ProgramData" => Path::new("C:\\ProgramData").to_path_buf(),
-                "Program Files (x86)" => Path::new("C:\\Program Files (x86)").to_path_buf(),
-                _ => panic!("Parent Directory is invalid"),
-            };
+                {
+                    break 'inner;
+                }
+            } else {
+                let parent_directory: PathBuf = match item.parent.as_str() {
+                    // Public Directory
+                    "Public_Document" => dirs_next::public_dir().unwrap().join("Documents"),
+                    // User directories
+                    "Document" => dirs_next::document_dir().unwrap(),
+                    "Local" => dirs_next::data_local_dir().unwrap(), // "AppData/Local"
+                    "Roaming" => dirs_next::data_dir().unwrap(),     // "AppData/Roaming"
+                    "ProgramData" => Path::new("C:\\ProgramData").to_path_buf(),
+                    "Program Files (x86)" => Path::new("C:\\Program Files (x86)").to_path_buf(),
+                    _ => panic!("Parent Directory is invalid"),
+                };
 
-            debug_println!(
-                "{} {} {}",
-                item.name,
-                parent_directory.display(),
-                parent_directory.exists()
-            );
+                debug_println!(
+                    "{} {} {}",
+                    item.name,
+                    parent_directory.display(),
+                    parent_directory.exists()
+                );
 
-            if !given_glob_check_if_file_exists(
-                item.globs.clone(),
-                parent_directory,
-                Option::Some(item.name.clone()),
-            )
-            .unwrap()
-            {
-                return;
+                if !given_glob_check_if_file_exists(
+                    item.globs.clone(),
+                    parent_directory,
+                    Option::Some(item.name.clone()),
+                )
+                .unwrap()
+                {
+                    break 'inner;
+                }
             }
         }
 
         let current = current_counter.load(Ordering::SeqCst);
         current_counter.store(current + 1, Ordering::SeqCst);
-
         app_handle
             .emit_to(
                 "updater",
                 "main-loop-progress",
-                EventPayload {
+                ThreadEventPayload {
                     name: item.name.clone(),
                     total: json_length as u64,
                     current: (current + 1) as u64,

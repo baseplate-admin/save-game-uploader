@@ -2881,7 +2881,6 @@ dependencies = [
  "glob",
  "json5",
  "memoize",
- "once_cell",
  "rayon",
  "serde",
  "serde_json",
