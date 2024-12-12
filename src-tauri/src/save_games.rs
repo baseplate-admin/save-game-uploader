@@ -39,9 +39,7 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
 
     for entry in files {
         match entry {
-            Ok(ref path) => {
-                println!("{:#?}", path);
-
+            Ok(path) => {
                 let json_file =
                     File::open(path.clone()).expect(&format!("Canonot load {}.", path.display()));
 
