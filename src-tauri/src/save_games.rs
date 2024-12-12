@@ -1,6 +1,5 @@
-use crate::debug_println;
+use crate::{debug_println, utils};
 use dirs_next;
-use glob::glob;
 use json5;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -11,6 +10,7 @@ use std::{
     // time::Duration,
 };
 use tauri::{AppHandle, Emitter};
+use utils::globs::given_glob_check_if_file_exists;
 
 #[derive(Clone, Serialize)]
 struct EventPayload {
@@ -71,41 +71,29 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
             continue 'main;
         };
 
-        // TODO: Make this function call threaded for increased performance?
-        for glob_pattern in item.globs.clone() {
-            let pattern_path = child_directory.join(glob_pattern.clone());
-            let pattern_str = pattern_path.to_str().expect(&format!(
-                "Pattern not right. Found {}. Made {}",
-                glob_pattern,
-                pattern_path.display()
-            ));
-            let files = glob(pattern_str)
-                .map_err(|e| panic!("Glob pattern not right, {} {}", pattern_str, e))
+        let directory_is_found = given_glob_check_if_file_exists(
+            item.globs.clone(),
+            child_directory,
+            Option::Some(item.name.clone()),
+        )
+        .unwrap();
+        if directory_is_found {
+            app_handle
+                .emit_to(
+                    "updater",
+                    "main-loop-progress",
+                    EventPayload {
+                        name: item.name.clone(),
+                        total: json_length as u64,
+                        current: (index + 1) as u64,
+                    },
+                )
                 .unwrap();
-
-            for entry in files {
-                if let Err(_) = entry {
-                    println!("Glob File not found for {}", item.name);
-                    continue 'main;
-                }
-            }
+            found_games.push(item);
         }
-
-        app_handle
-            .emit_to(
-                "updater",
-                "main-loop-progress",
-                EventPayload {
-                    name: item.name.clone(),
-                    total: json_length as u64,
-                    current: (index + 1) as u64,
-                },
-            )
-            .unwrap();
 
         // Debug code for testing lode
         // thread::sleep(Duration::from_millis(4000));
-        found_games.push(item);
     }
 
     found_games

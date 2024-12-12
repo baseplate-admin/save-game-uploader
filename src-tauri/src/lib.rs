@@ -2,13 +2,9 @@
 mod macros;
 mod save_games;
 mod search;
+mod utils;
 
 use save_games::find_games;
-use search::build_directory_map;
-
-pub fn test() {
-    build_directory_map();
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
