@@ -1,0 +1,8 @@
+[
+    {
+        name: 'Shadow of the Tomb Raider (cracked)',
+        parent: 'Document',
+        globs: ['Shadow of the Tomb Raider/**/*.dat'],
+        image: '23411.png',
+    },
+]

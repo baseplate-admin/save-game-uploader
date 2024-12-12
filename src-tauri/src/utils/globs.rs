@@ -32,12 +32,15 @@ pub fn given_glob_check_if_file_exists(
             .unwrap();
 
         for entry in files {
-            if let Err(_) = entry {
-                if let Some(_name) = &name {
-                    println!("Glob File not found for {}", _name);
+            match entry {
+                Ok(_) => {
+                    found.store(true, Ordering::SeqCst);
                 }
-            } else {
-                found.store(true, Ordering::SeqCst);
+                Err(_) => {
+                    if let Some(_name) = &name {
+                        println!("Glob File not found for {}", _name);
+                    }
+                }
             }
         }
     });

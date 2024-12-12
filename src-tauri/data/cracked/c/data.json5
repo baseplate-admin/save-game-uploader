@@ -1,0 +1,12 @@
+[
+    {
+        name: 'Call of Duty: Black Ops Cold War',
+        parent: 'Document',
+
+        globs: [
+            'Call Of Duty Black Ops Cold War/**/*.cgp',
+            'Call Of Duty Black Ops Cold War/**/config.ini',
+        ],
+        image: '',
+    },
+]

@@ -39,28 +39,4 @@
         ],
         image: '',
     },
-    {
-        name: 'Call of Duty: Black Ops Cold War',
-        parent: 'Document',
-
-        globs: [
-            'Call Of Duty Black Ops Cold War/**/*.cgp',
-            'Call Of Duty Black Ops Cold War/**/config.ini',
-        ],
-        image: '',
-    },
-    {
-        name: 'Shadow of the Tomb Raider (cracked)',
-        parent: 'Document',
-        globs: ['Shadow of the Tomb Raider/**/*.dat'],
-        image: '23411.png',
-    },
-
-    // Uncracked Games
-    {
-        name: "Assassin's Creed IV Black Flag",
-        parent: 'Program Files (x86)',
-        globs: ['Ubisoft/Ubisoft Game Launcher/savegames/**/273/**/*.save'],
-        image: '',
-    },
 ]

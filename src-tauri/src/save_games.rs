@@ -1,4 +1,6 @@
 use crate::{debug_println, search::check_if_directory_is_in_disk, utils};
+use glob::glob;
+
 use dirs_next;
 use json5;
 use serde::{Deserialize, Serialize};
@@ -26,21 +28,44 @@ pub struct LocationData {
     globs: Vec<String>,
     image: String,
 }
+
 #[tauri::command]
 pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     let cargo_dir = env!("CARGO_MANIFEST_DIR");
-    let json_path = Path::new(cargo_dir).join("data").join("location.json5");
+    let json_path = Path::new(cargo_dir).join("data").join("**/*.json");
+    let files = glob(json_path.to_str().unwrap()).unwrap();
 
-    let json_file = File::open(json_path).expect("`location.json5` not found");
-    let mut json_buffer = BufReader::new(json_file);
-    let mut json_string = String::new();
-    json_buffer
-        .read_to_string(&mut json_string)
-        .expect("Cannot read `json5` file to string");
+    let mut json = Vec::<LocationData>::new();
 
-    let json: Vec<LocationData> = json5::from_str(&json_string)
-        .expect("JSON was not well-formatted according to `LocationData`");
+    for entry in files {
+        match entry {
+            Ok(ref path) => {
+                println!("{:#?}", path);
+
+                let json_file =
+                    File::open(path.clone()).expect(&format!("Canonot load {}.", path.display()));
+
+                let mut json_buffer = BufReader::new(json_file);
+                let mut json_string = String::new();
+                json_buffer
+                    .read_to_string(&mut json_string)
+                    .expect("Cannot read `json5` file to string");
+                let mut _json: Vec<LocationData> = json5::from_str(&json_string)
+                    .expect("JSON was not well-formatted according to `LocationData`");
+
+                json.append(&mut _json);
+            }
+            Err(e) => panic!("Cannot read json5 file, Reson {}", e),
+        }
+    }
+
     let json_length = json.len();
+    if json_length == 0 {
+        panic!(
+            "There is no `data.json5` file in {} directory",
+            json_path.display()
+        )
+    }
 
     let mut found_games: Vec<LocationData> = Vec::new();
 
