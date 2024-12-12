@@ -17,8 +17,8 @@
     let total: number | null = $state(null),
         current: number | null = $state(null),
         game_name: string | null = $state(null),
-        load_finished = $derived(
-            total != null && current != null && games_store.state.length !== 0
+        load_finished: boolean | null = $derived(
+            total === current && games_store.state.size > 0
         );
 
     $effect(() => {
@@ -38,14 +38,11 @@
             game_name = payload.name;
         });
 
-        invoke('find_games').then((res) => {
+        await invoke('find_games').then((res) => {
             for (const item of res as GameJSON[]) {
-                games_store.push(item);
+                games_store.state.add(item);
             }
         });
-    });
-    $effect(() => {
-        console.log(games_store.state.length);
     });
 </script>
 
@@ -53,7 +50,7 @@
     {#if load_finished}
         <div class="flex gap-2">
             <p>Loaded :</p>
-            <b>{games_store.state.length}</b>
+            <b>{games_store.state.size}</b>
             <p>games</p>
         </div>
     {:else}

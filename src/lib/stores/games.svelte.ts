@@ -1,3 +1,5 @@
+import { SvelteSet } from 'svelte/reactivity';
+
 export type GameJSON = {
     name: string;
     parent: string;
@@ -6,18 +8,16 @@ export type GameJSON = {
     image: string;
 };
 
-let games_store = $state<GameJSON[]>(new Array<GameJSON>());
+let games_store = $state(new SvelteSet<GameJSON>());
 
 export function createGamesStore() {
     return {
         get state() {
             return games_store;
         },
-        push(payload: GameJSON) {
-            games_store!.push(payload);
-        },
+
         reset() {
-            games_store = new Array<GameJSON>();
+            games_store = new SvelteSet<GameJSON>();
         },
     };
 }
