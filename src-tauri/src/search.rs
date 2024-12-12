@@ -16,18 +16,14 @@ fn build_folder_map(dir: &Path, shared_vector: Arc<Mutex<Vec<PathBuf>>>) {
             if let Ok(entry) = entry {
                 let path = entry.path();
 
-                // Push the folder or file name to the shared vector
-                {
-                    let mut vec = shared_vector.lock().unwrap();
-
-                    if path.is_dir() {
-                        vec.push(path.clone());
-                    }
-                }
-
                 // Recurse into directories
                 if path.is_dir() {
                     debug_println!("Scanned: {}", path.display());
+                    {
+                        let mut vec = shared_vector.lock().unwrap();
+                        vec.push(path.clone());
+                    }
+
                     build_folder_map(&path, Arc::clone(&shared_vector));
                 }
             }
