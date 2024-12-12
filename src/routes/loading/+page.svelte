@@ -59,5 +59,7 @@
     {:else}
         <div>[{current}/{total}] {game_name}</div>
     {/if}
-    <Progress value={current} max={total ?? 0} class="w-[60%]" />
+    {#if total && current}
+        <Progress value={current} max={total} class="w-[60%]" />
+    {/if}
 </div>

@@ -1,4 +1,4 @@
-use crate::{debug_println, utils};
+use crate::{debug_println, search::check_if_directory_is_in_disk, utils};
 use dirs_next;
 use json5;
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,6 @@ struct EventPayload {
 pub struct LocationData {
     name: String,
     parent: String,
-    directory: String,
     globs: Vec<String>,
     image: String,
 }
@@ -45,51 +44,65 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
 
     let mut found_games: Vec<LocationData> = Vec::new();
 
-    'main: for (index, item) in json.into_iter().enumerate() {
-        let parent_directory: PathBuf = match item.parent.as_str() {
-            // Public Directory
-            "Public_Document" => dirs_next::public_dir().unwrap().join("Documents"),
-            // User directories
-            "Document" => dirs_next::document_dir().unwrap(),
-            "Local" => dirs_next::data_local_dir().unwrap(), // "AppData/Local"
-            "Roaming" => dirs_next::data_dir().unwrap(),     // "AppData/Roaming"
-            "ProgramData" => Path::new("C:\\ProgramData").to_path_buf(),
-            "Program Files (x86)" => Path::new("C:\\Program Files (x86)").to_path_buf(),
-            _ => panic!("Parent Directory is invalid"),
-        };
+    for (index, item) in json.into_iter().enumerate() {
+        if item.parent == "<GAMEDIR>" {
+            if check_if_directory_is_in_disk(item.globs.clone(), Option::Some(item.name.clone()))
+                .unwrap()
+            {
+                app_handle
+                    .emit_to(
+                        "updater",
+                        "main-loop-progress",
+                        EventPayload {
+                            name: item.name.clone(),
+                            total: json_length as u64,
+                            current: (index + 1) as u64,
+                        },
+                    )
+                    .unwrap();
+                found_games.push(item);
+            }
+        } else {
+            let parent_directory: PathBuf = match item.parent.as_str() {
+                // Public Directory
+                "Public_Document" => dirs_next::public_dir().unwrap().join("Documents"),
+                // User directories
+                "Document" => dirs_next::document_dir().unwrap(),
+                "Local" => dirs_next::data_local_dir().unwrap(), // "AppData/Local"
+                "Roaming" => dirs_next::data_dir().unwrap(),     // "AppData/Roaming"
+                "ProgramData" => Path::new("C:\\ProgramData").to_path_buf(),
+                "Program Files (x86)" => Path::new("C:\\Program Files (x86)").to_path_buf(),
 
-        let child_directory = parent_directory.join(item.directory.clone());
+                _ => panic!("Parent Directory is invalid"),
+            };
 
-        debug_println!(
-            "{} {} {}",
-            item.name,
-            child_directory.display(),
-            child_directory.exists()
-        );
+            debug_println!(
+                "{} {} {}",
+                item.name,
+                parent_directory.display(),
+                parent_directory.exists()
+            );
 
-        if !child_directory.exists() {
-            continue 'main;
-        };
-
-        let directory_is_found = given_glob_check_if_file_exists(
-            item.globs.clone(),
-            child_directory,
-            Option::Some(item.name.clone()),
-        )
-        .unwrap();
-        if directory_is_found {
-            app_handle
-                .emit_to(
-                    "updater",
-                    "main-loop-progress",
-                    EventPayload {
-                        name: item.name.clone(),
-                        total: json_length as u64,
-                        current: (index + 1) as u64,
-                    },
-                )
-                .unwrap();
-            found_games.push(item);
+            let directory_is_found = given_glob_check_if_file_exists(
+                item.globs.clone(),
+                parent_directory,
+                Option::Some(item.name.clone()),
+            )
+            .unwrap();
+            if directory_is_found {
+                app_handle
+                    .emit_to(
+                        "updater",
+                        "main-loop-progress",
+                        EventPayload {
+                            name: item.name.clone(),
+                            total: json_length as u64,
+                            current: (index + 1) as u64,
+                        },
+                    )
+                    .unwrap();
+                found_games.push(item);
+            }
         }
 
         // Debug code for testing lode

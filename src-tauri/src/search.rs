@@ -1,13 +1,17 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 use windows::{Win32::Foundation::MAX_PATH, Win32::Storage::FileSystem::GetLogicalDriveStringsW};
 
-use crate::debug_println;
+use crate::{debug_println, utils};
 use memoize::memoize;
 use rayon::prelude::*;
+use utils::globs::given_glob_check_if_file_exists;
 
 fn build_folder_map(dir: &Path, shared_vector: Arc<Mutex<Vec<PathBuf>>>) {
     if let Ok(entries) = fs::read_dir(dir) {
@@ -71,12 +75,25 @@ fn build_directory_map() -> Result<Vec<PathBuf>, String> {
     Ok(result)
 }
 
-pub fn check_if_directory_is_in_disk(directory: String) -> Result<bool, String> {
+pub fn check_if_directory_is_in_disk(
+    globs: Vec<String>,
+    name: Option<String>,
+) -> Result<bool, String> {
     let directory_map = build_directory_map().unwrap();
-    Ok(directory_map.iter().any(|path| {
-        path.file_name()
-            .and_then(|file_name| file_name.to_str())
-            .map(|file_name| file_name == directory)
-            .unwrap_or(false)
-    }))
+    let found = Arc::new(AtomicBool::new(false));
+
+    directory_map.par_iter().for_each(|item| {
+        if found.load(Ordering::SeqCst) {
+            return;
+        }
+
+        let directory_found =
+            given_glob_check_if_file_exists(globs.clone(), item.to_path_buf(), name.clone())
+                .unwrap();
+        if directory_found {
+            found.store(true, Ordering::SeqCst);
+        }
+    });
+
+    Ok(true)
 }
