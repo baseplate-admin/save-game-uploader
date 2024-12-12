@@ -1,6 +1,8 @@
-  {
+[
+    {
         name: "Assassin's Creed IV Black Flag",
         parent: 'Program Files (x86)',
         globs: ['Ubisoft/Ubisoft Game Launcher/savegames/**/273/**/*.save'],
         image: '',
     },
+]

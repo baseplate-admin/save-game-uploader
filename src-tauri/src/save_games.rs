@@ -48,8 +48,10 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
                 json_buffer
                     .read_to_string(&mut json_string)
                     .expect("Cannot read `json5` file to string");
-                let mut _json: Vec<LocationData> = json5::from_str(&json_string)
-                    .expect("JSON was not well-formatted according to `LocationData`");
+                let mut _json: Vec<LocationData> = json5::from_str(&json_string).expect(&format!(
+                    "{},JSON was not well-formatted according to `LocationData`",
+                    path.display()
+                ));
 
                 json.append(&mut _json);
             }
