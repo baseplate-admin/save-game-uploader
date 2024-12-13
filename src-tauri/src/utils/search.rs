@@ -1,8 +1,8 @@
+use crate::{debug_println, utils};
+use cached::proc_macro::cached;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::sync::mpsc;
-
-use crate::{debug_println, utils};
 use utils::globs::given_glob_check_if_file_exists;
 use windows::Win32::Foundation::MAX_PATH;
 use windows::Win32::Storage::FileSystem::GetLogicalDriveStringsW;
@@ -86,6 +86,7 @@ async fn scan_directory(dir: &Path, sender: mpsc::Sender<PathBuf>) -> Result<(),
     Ok(())
 }
 
+#[cached]
 async fn build_directory_map() -> Result<Vec<PathBuf>, String> {
     // Buffer to hold drive strings
     let mut buffer: [u16; MAX_PATH as usize] = [0; MAX_PATH as usize];
@@ -148,6 +149,7 @@ pub async fn check_if_directory_is_in_disk(
 
     for item in directory_map {
         let found = given_glob_check_if_file_exists(globs.clone(), item.clone(), name.clone())
+            .await
             .unwrap_or(false);
 
         if found {

@@ -124,6 +124,7 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
                             parent_directory,
                             Some(item.name.clone()),
                         )
+                        .await
                         .unwrap()
                         {
                             break 'inner;
