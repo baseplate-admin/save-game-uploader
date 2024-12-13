@@ -1,5 +1,4 @@
 use glob::glob;
-use rayon::prelude::*;
 use std::{
     path::PathBuf,
     sync::{
@@ -15,7 +14,7 @@ pub fn given_glob_check_if_file_exists(
 ) -> Result<bool, String> {
     let found = Arc::new(AtomicBool::new(false));
 
-    globs.par_iter().for_each(|glob_pattern| {
+    globs.into_iter().for_each(|glob_pattern| {
         // Early exit if found is true
         if found.load(Ordering::SeqCst) {
             return;
