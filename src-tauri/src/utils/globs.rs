@@ -3,6 +3,8 @@ use glob::glob;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 
+use crate::debug_println;
+
 pub async fn given_glob_check_if_file_exists(
     globs: Vec<String>,
     parent_dir: PathBuf,
@@ -20,7 +22,7 @@ pub async fn given_glob_check_if_file_exists(
             let pattern_str = match pattern_path.to_str() {
                 Some(s) => s.to_string(),
                 None => {
-                    eprintln!(
+                    debug_println!(
                         "Pattern not right. Found {}. Made {}",
                         glob_pattern,
                         pattern_path.display()
@@ -32,7 +34,7 @@ pub async fn given_glob_check_if_file_exists(
             let files = match glob(&pattern_str) {
                 Ok(paths) => paths,
                 Err(e) => {
-                    eprintln!("Glob pattern not right: {}. Error: {}", pattern_str, e);
+                    debug_println!("Glob pattern not right: {}. Error: {}", pattern_str, e);
                     return;
                 }
             };
@@ -46,7 +48,7 @@ pub async fn given_glob_check_if_file_exists(
                     }
                     Err(_) => {
                         if let Some(name) = &name {
-                            println!("Glob file not found for {}", name);
+                            debug_println!("Glob file not found for {}", name);
                         }
                     }
                 }
@@ -60,7 +62,6 @@ pub async fn given_glob_check_if_file_exists(
         .collect()
         .await;
 
-    // Check if any task found a match
     let found_result = *found.lock().await;
     Ok(found_result)
 }
