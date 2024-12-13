@@ -2,7 +2,6 @@ use crate::{debug_println, utils};
 use glob::glob;
 
 use dirs_next;
-use futures::prelude::*;
 use json5;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -45,11 +44,9 @@ pub async fn find_games(app_handle: AppHandle) -> Vec<LocationData> {
     for entry in files {
         match entry {
             Ok(path) => {
-                if path.file_name().unwrap().to_str().unwrap() != "data.json5" {
-                    panic!(
-                        "There should only be `data.json5` but found {}",
-                        path.file_name().unwrap().to_str().unwrap()
-                    );
+                let file_name = path.file_name().unwrap().to_str().unwrap();
+                if file_name != "data.json5" {
+                    panic!("There should only be `data.json5` but found {}", file_name);
                 };
 
                 let json_file =
