@@ -1,49 +1,84 @@
 use crate::{debug_println, utils};
-use memoize::memoize;
-use rayon::prelude::*;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
-};
+use cached::proc_macro::cached;
+use std::path::{Path, PathBuf};
+use tokio::fs;
+use tokio::sync::mpsc;
 use utils::globs::given_glob_check_if_file_exists;
-use windows::{Win32::Foundation::MAX_PATH, Win32::Storage::FileSystem::GetLogicalDriveStringsW};
+use windows::Win32::Foundation::MAX_PATH;
+use windows::Win32::Storage::FileSystem::GetLogicalDriveStringsW;
 
 const AVOID_DIRS: [&str; 2] = [
     "Windows", // C:/Windows
     "AppData",
 ];
 
-fn build_folder_map(dir: &Path, shared_vector: Arc<Mutex<Vec<PathBuf>>>) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        let entries: Vec<PathBuf> = entries
-            .filter_map(|entry| entry.ok().map(|e| e.path()))
-            .collect();
+async fn scan_directory(dir: &Path, sender: mpsc::Sender<PathBuf>) -> Result<(), std::io::Error> {
+    let mut dir_queue = vec![dir.to_path_buf()];
 
-        // Push directories to the shared vector and spawn threads for subdirectories
-        entries
-            .par_iter() // Use rayon's parallel iterator
-            .for_each(|path| {
-                if path.is_dir()
-                    && !AVOID_DIRS.contains(&path.file_name().unwrap().to_str().unwrap())
-                {
-                    debug_println!("Scanned: {}", path.display());
-                    {
-                        let mut vec = shared_vector.lock().unwrap();
-                        vec.push(path.clone());
-                    }
-                    // Recursive call in parallel for subdirectories
-                    build_folder_map(path, Arc::clone(&shared_vector));
+    while let Some(current_dir) = dir_queue.pop() {
+        // Skip system directories and avoid directories
+        if let Some(dir_name) = current_dir.file_name().and_then(|n| n.to_str()) {
+            if AVOID_DIRS.contains(&dir_name) {
+                continue;
+            }
+        }
+
+        // Attempt to read directory, handle access errors
+        let entries = match fs::read_dir(&current_dir).await {
+            Ok(entries) => entries,
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::PermissionDenied
+                | std::io::ErrorKind::NotFound
+                | std::io::ErrorKind::InvalidInput => {
+                    debug_println!(
+                        "Skipping directory due to access error: {}",
+                        current_dir.display()
+                    );
+                    continue;
                 }
-            });
+                _ => return Err(e),
+            },
+        };
+
+        let mut stream = entries;
+        'inner: while let Some(entry) = match stream.next_entry().await {
+            Ok(entry) => entry,
+            Err(e) => {
+                debug_println!("Error reading entry in {}: {}", current_dir.display(), e);
+                break 'inner;
+            }
+        } {
+            let path = entry.path();
+
+            // Check if it's a directory
+            if path.is_dir() {
+                let filename = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("");
+
+                // Skip system and avoid directories
+                if !AVOID_DIRS.contains(&filename) {
+                    debug_println!("Scanned: {}", path.display());
+
+                    // Send directory path
+                    if let Err(_) = sender.send(path.clone()).await {
+                        debug_println!("Channel send failed for: {}", path.display());
+                        break;
+                    }
+
+                    // Queue subdirectory for processing
+                    dir_queue.push(path);
+                }
+            }
+        }
     }
+
+    Ok(())
 }
 
-#[memoize]
-fn build_directory_map() -> Result<Vec<PathBuf>, String> {
+#[cached]
+async fn build_directory_map() -> Result<Vec<PathBuf>, String> {
     // Buffer to hold drive strings
     let mut buffer: [u16; MAX_PATH as usize] = [0; MAX_PATH as usize];
 
@@ -63,42 +98,52 @@ fn build_directory_map() -> Result<Vec<PathBuf>, String> {
         .map(|s| s.to_string())
         .collect();
 
-    let shared_directories: Arc<Mutex<Vec<PathBuf>>> = Arc::new(Mutex::new(Vec::<PathBuf>::new()));
+    // Create a channel to collect directory paths
+    let (sender, mut receiver) = mpsc::channel(1000);
 
-    drives.par_iter().for_each(|drive| {
-        let shared_vector_clone = Arc::clone(&shared_directories);
+    // Spawn tasks for each drive
+    let mut handles = Vec::new();
+    for drive in drives {
         let root_dir = PathBuf::from(drive);
-        build_folder_map(&root_dir, shared_vector_clone);
-    });
+        let sender_clone = sender.clone();
 
-    // Return the accumulated results
-    let result = Arc::try_unwrap(shared_directories)
-        .map_err(|_| "Failed to unwrap Arc".to_string())?
-        .into_inner()
-        .map_err(|_| "Failed to unlock Mutex".to_string())?;
+        let handle = tokio::spawn(async move {
+            if let Err(e) = scan_directory(&root_dir, sender_clone).await {
+                debug_println!("Error scanning drive {}: {}", root_dir.display(), e);
+            }
+        });
+        handles.push(handle);
+    }
 
-    Ok(result)
+    // Collect directories from the channel
+    let mut directories = Vec::new();
+    while let Some(path) = receiver.recv().await {
+        directories.push(path);
+    }
+
+    // Wait for all drive scanning tasks to complete
+    for handle in handles {
+        handle.await.map_err(|e| e.to_string())?;
+    }
+
+    Ok(directories)
 }
 
-pub fn check_if_directory_is_in_disk(
+pub async fn check_if_directory_is_in_disk(
     globs: Vec<String>,
     name: Option<String>,
 ) -> Result<bool, String> {
-    let directory_map = build_directory_map().unwrap();
-    let found = Arc::new(AtomicBool::new(false));
+    let directory_map = build_directory_map().await?;
 
-    directory_map.par_iter().for_each(|item| {
-        if found.load(Ordering::SeqCst) {
-            return;
+    for item in directory_map {
+        let found = given_glob_check_if_file_exists(globs.clone(), item.clone(), name.clone())
+            .await
+            .unwrap_or(false);
+
+        if found {
+            return Ok(true);
         }
+    }
 
-        let directory_found =
-            given_glob_check_if_file_exists(globs.clone(), item.to_path_buf(), name.clone())
-                .unwrap();
-        if directory_found {
-            found.store(true, Ordering::SeqCst);
-        }
-    });
-
-    Ok(found.load(Ordering::SeqCst))
+    Ok(false)
 }
