@@ -40,4 +40,4 @@ json5 = "0.4.1"
 windows = { version = "0.61.1", features = ["Win32_Storage_FileSystem"] }
 tokio = { version = "1.42.0", features = ['full'] }
 futures = "0.3"
-cached = { version = "0.54.0", features = ["async"] }
+cached = { version = "0.55.1", features = ["async"] }
