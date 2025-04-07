@@ -38,6 +38,6 @@ dirs-next = "2.0.0"
 glob = "0.3.2"
 json5 = "0.4.1"
 windows = { version = "0.61.1", features = ["Win32_Storage_FileSystem"] }
-tokio = { version = "1.44.1", features = ['full'] }
+tokio = { version = "1.44.2", features = ['full'] }
 futures = "0.3"
 cached = { version = "0.55.1", features = ["async"] }
